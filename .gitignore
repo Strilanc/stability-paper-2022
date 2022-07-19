@@ -1,11 +1,5 @@
 .idea/*
 *.swp
-gen/
-data/*
-*.csv
-internal_decoder.binary
-qec/
-honeycomb/
 **/.vs/*
 **/obj/*
 **/bin/*

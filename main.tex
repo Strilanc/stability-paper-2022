@@ -1,4 +1,5 @@
 \documentclass[onecolumn,unpublished,a4paper]{quantumarticle}
+\usepackage[backend=biber,style=alphabetic,maxbibnames=999]{biblatex}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
@@ -12,13 +13,14 @@
 \usepackage[utf8]{inputenc}
 \usepackage{capt-of}
 \usepackage{mathtools}
-\usepackage[numbers,sort&compress]{natbib}
 \usepackage{float}
 \usepackage[section]{placeins}
 \usepackage{listings}
 \usepackage[T1]{fontenc}  % Without this, underscores lost when copy-pasting output!
 \usetikzlibrary{decorations.pathreplacing}
 \usepackage{braket}
+
+\addbibresource{refs.bib}
 
 \DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{5}
 \DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{5}
@@ -119,6 +121,8 @@ Stability experiments achieve this by testing on a region that is locally a norm
 
 \maketitle
 
+\emph{The source code that was written, the exact noisy circuits that were sampled, and the statistics that were collected as part of this paper are available at \href{https://doi.org/10.5281/zenodo.6859486}{doi.org/10.5281/zenodo.6859486}~\cite{craig_gidney_2022_6859486}.}
+
 \section{Introduction}
 \label{sec:introduction}
 
@@ -138,9 +142,9 @@ Stability experiments achieve this by testing on a region that is locally a norm
     \label{fig:4x4_X}
 \end{figure}
 
-In a quantum error correcting code, such as the surface code \cite{fowler2012surfacecodereview}, there are many different but equivalent logical observables that you can track.
+In a quantum error correcting code, such as the surface code, there are many different but equivalent logical observables that you can track.
 For example, in a surface code patch with Z type boundaries at the top and bottom, the Z logical observable could be a vertical path along the left hand side of the patch, or along the right hand side of the patch, or many other possibilities.
-Each choice of observable has an associated ``byproduct operator", which will be either $+1$ or $-1$, indicating whether the observable is currently negated compared to what the overlying quantum algorithm expects.
+Each choice of observable has an associated ``byproduct operator"~\cite{fowler2012surfacecodereview}, which will be either $+1$ or $-1$, indicating whether the observable is currently negated compared to what the overlying quantum algorithm expects.
 A key distinction between the various choices of which equivalent observable to track is that the different choices can have different byproduct operators.
 Moving from one choice of logical observable to another is a book-keeping operation, where the relationship between the byproduct operators is determined by the measurement results from the stabilizers that separate the observables.
 So, ultimately, moving a logical observable through space comes down to correctly multiplying the contributions of many stabilizer measurements into its byproduct operator.
@@ -181,8 +185,8 @@ A more abstract justification for being interested in the stability experiment i
 
 A final reason to be interested in the stability experiment is that, because its code distance depends on how long it runs instead of how many qubits it covers, it allows experimental access to arbitrarily high code distances.
 Additionally, as I'll show with simulation results, at small patch sizes the stability experiment is easier than memory experiments.
-A quantum computer with a noise level above (or barely below) the threshold of the surface code may still be well below the effective threshold of a small stability experiment.
-Running a small stability experiment would allow this quantum computer to demonstrate strong exponential suppression of a relevant logical error mechanism; to demonstrate progress towards the ultimate goal of strong exponential suppression of \emph{all} logical error mechanisms at full scale.
+A quantum computer with a noise level above the threshold of the surface code (meaning making surface code patches bigger increases the logical error rate rather than decreasing it) can still be below the threshold of small stability experiments (meaning that increasing the number of rounds decreases the logical error rate rather than increasing it).
+This suggests that a quantum computer near (but not yet below) the threshold of the surface code may still be able to demonstrate strong exponential suppression of a relevant logical error mechanism; to demonstrate progress towards the ultimate goal of strong exponential suppression of \emph{all} logical error mechanisms at full scale.
 
 \section{The Stability Experiment}
 
@@ -247,7 +251,9 @@ The more times you repeat the stabilizer measurements, the more physical errors 
 
 \item Measure all data qubits in a basis that disagrees with the chosen boundary type (so that the measurements can't be used as a source of truth that forces the relevant stabilizers to be correct via the error correction process).
 
-\item Finish error correction and check whether or not the product of all stabilizers whose type matches the boundary type is equal to $+1$ (success) or $-1$ (logical error).
+\item Arbitrarily pick a round from the circuit's execution, and compute the product of all measurements from that round which correspond to stabilizers whose type matches the spatial boundaries.
+Use a decoder to predict, based on detection event data, if this product is flipped (i.e. perform error correction).
+If the decoder predicts incorrectly (e.g. it says the product was flipped but the product was $+1$ as it would be in the noiseless case), a logical error has occurred.
 
 \end{enumerate}
 
@@ -267,6 +273,29 @@ The more times you repeat the stabilizer measurements, the more physical errors 
         Front faces are omitted so interior details can be seen.
     }
     \label{fig:topological}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \resizebox{\linewidth}{!}{
+        \includegraphics{assets/logical-error.png}
+    }
+    \caption{
+        Example of an undetected logical error in a stability experiment.
+        At the start of time (on the left), the data qubits are initialized in the Z basis.
+        At the end of time (on the right), the data qubits are measured in the Z basis.
+        In between, the stabilizers of the code are measured five times.
+        The Z basis stabilizers are deterministically +1 due to the initialization, whereas the X basis stabilizers project randomly to either -1 or +1.
+        Each round, each stabilizer is annotated with its reported measurement (``+'' for +1 and ``-'' for -1).
+        Every time the stabilizers are measured, a measurement error occurs on the top center X basis stabilizer (indicated by yellow splotches).
+        Its actual value is +1, but it keeps being reported as -1.
+        Because the measurement errors occur consistently on the same stabilizer, and because the data initialization and data measurement occur in the Z basis, no detection events are produced.
+        The decoder will predict that no corrections are needed, because locally it appears that nothing is going wrong (there are no detection events).
+        But, globally, the product of all X stabilizers is -1 instead of +1.
+        The decoder predicted incorrectly.
+        A logical error occurred.
+    }
+    \label{fig:logical_error}
 \end{figure}
 
 Those are the key ingredients of a stability experiment.
@@ -294,11 +323,12 @@ This is a measure of how far (and whether) the physical noise rate is below the 
         \includegraphics{assets/stability_sim_mr.png}
     }
     \caption{
-        Logical error suppression factor ($\lambda$) versus measure reset noise strength and depolarizing circuit noise strength in memory and stability experiments.
-        $\lambda$ is the suppression factor applied to the logical error rate by increasing the code distance by two.
-        For example, $\lambda=3\text{dB}$ means there is a three decibel reduction (roughly a factor of two) in the logical error rate each time a stability experiment is extended two more rounds.
-        When $\lambda < 0\text{dB}$, the logical error rate is getting worse as the code distance increases.
-        The raw data used to generate this plot is in ancillary file \emph{sim-data.csv}.
+        Error suppression versus measure reset noise strength and unitary operation noise strength in memory experiments and stability experiments.
+        A suppression factor of $3\text{dB}$ means there is a three decibel reduction (roughly a factor of two) in the logical error rate each time the code distance is increased by 1.
+        When the suppression factor is $0\text{dB}$ or less, the logical error rate is not improving (or getting worse) as the code distance is increased.
+        The suppression factor is derived from the slope of a line fit of log logical error rate versus code distance.
+        For memory experiments the code distance is the patch diameter (the width or the height).
+        For stability experiments the code distance is the number of rounds.
     }
     \label{fig:stability_sim_mr}
 \end{figure}
@@ -350,8 +380,7 @@ Thanks to Austin Fowler for writing the decoder that was used by this work.
 Thanks to Hartmut Neven for creating an environment where this work was possible.
 
 
-\bibliographystyle{plainnat}
-\bibliography{refs}
+\printbibliography
 
 \clearpage
 
@@ -401,6 +430,126 @@ Thanks to Hartmut Neven for creating an environment where this work was possible
     \label{fig:10x10_XZ}
 \end{figure}
 
+\appendix
+
+\clearpage
+\section{Noise Model}
+\label{app:noise_model}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|r|l|}
+    \hline
+    Ideal gate & Noisy gate
+    \\
+    \hline
+    (Idling) & $\text{DEP1}(p_u)$
+    \\
+    (Single qubit gate) $U_1$ & $U_1 \circ \text{DEP1}(p_u)$
+    \\
+    $CZ$ & $CZ \circ \text{DEP2}(p_u)$
+    \\
+    \hline
+    $R_Z$ & $R_Z \circ \text{XERR}(p_m)$
+    \\
+    $M_Z$ & $M_Z \circ \text{MERR}(p_m) \circ \text{DEP1}(p_m)$
+    \\
+    \hline
+    \end{tabular}
+    \caption{
+        The noise model used by simulations in this paper.
+        Gates in the left column are substituted for the noisy composition in the right column.
+        The noise model has two parameters: $p_m$ (measure reset noise strength) and $p_u$ (unitary operation noise strength).
+        Note $A \circ B = B \cdot A$ meaning $B$ is applied after $A$.
+        Noise channels are defined in \tbl{noise_channels}.
+    }
+    \label{tbl:noise_model}
+\end{table}
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|r|l|}
+    \hline
+    Noise channel & Probability distribution of effects
+    \\
+    \hline
+    $\text{MERR}(p)$ & $\begin{aligned}
+        1-p &\rightarrow \text{(report previous measurement correctly)}
+        \\
+        p &\rightarrow \text{(report previous measurement incorrectly; flip its result)}
+    \end{aligned}$
+    \\
+    \hline
+    $\text{XERR}(p)$ & $\begin{aligned}
+        1-p &\rightarrow I
+        \\
+        p &\rightarrow X
+    \end{aligned}$
+    \\
+    \hline
+    $\text{ZERR}(p)$ & $\begin{aligned}
+        1-p &\rightarrow I
+        \\
+        p &\rightarrow Z
+    \end{aligned}$
+    \\
+    \hline
+    $\text{DEP1}(p)$ & $\begin{aligned}
+        1-p &\rightarrow I
+        \\
+        p/3 &\rightarrow X
+        \\
+        p/3 &\rightarrow Y
+        \\
+        p/3 &\rightarrow Z
+    \end{aligned}$
+    \\
+    \hline
+    $\text{DEP2}(p)$ & $\begin{aligned}
+        1-p &\rightarrow I \otimes I
+        &\;\;
+        p/15 &\rightarrow I \otimes X
+        &\;\;
+        p/15 &\rightarrow I \otimes Y
+        &\;\;
+        p/15 &\rightarrow I \otimes Z
+        \\
+        p/15 &\rightarrow X \otimes I
+        &\;\;
+        p/15 &\rightarrow X \otimes X
+        &\;\;
+        p/15 &\rightarrow X \otimes Y
+        &\;\;
+        p/15 &\rightarrow X \otimes Z
+        \\
+        p/15 &\rightarrow Y \otimes I
+        &\;\;
+        p/15 &\rightarrow Y \otimes X
+        &\;\;
+        p/15 &\rightarrow Y \otimes Y
+        &\;\;
+        p/15 &\rightarrow Y \otimes Z
+        \\
+        p/15 &\rightarrow Z \otimes I
+        &\;\;
+        p/15 &\rightarrow Z \otimes X
+        &\;\;
+        p/15 &\rightarrow Z \otimes Y
+        &\;\;
+        p/15 &\rightarrow Z \otimes Z
+    \end{aligned}$
+    \\
+    \hline
+    \end{tabular}
+    \caption{
+        Definitions of various noise channels.
+        Used by \tbl{noise_model}.
+    }
+    \label{tbl:noise_channels}
+\end{table}
+
+
+\clearpage
 \section{Example Stability Experiment Circuit}
 
 The following is a (noiseless) Stim circuit file \cite{stimcircuitformat} describing a 25 round version of the 4$\times$4 stability experiment shown in \fig{4x4_X}.
