@@ -159,8 +159,10 @@ In realistic scenarios, with big code distances or long routing distances, movin
 If \emph{any one} (or three, or five, or etc) of the measurements of those stabilizers is wrong, the sign of the moved logical observable will be wrong.
 This is a logical error; a disastrous situation where the overlying algorithm being executed by the quantum computer will silently produce bad results.
 
-Because it's needed for moving logical observables, and because it's impossible to do any computation if you just leave everything in the same place forever, being able to exactly correctly compute huge products of stabilizers is extremely important.
-Given that fact, it's strange that there's no well established experiment for verifying this capability (analogous to how memory experiments are a well established benchmark for verifying the ability to preserve a qubit through time \cite{chen2021exponential,ryan2021realization,zhao2021realizing,krinner2021realizing,andersen2020repeated}).
+The relevance of computing large products of stabilizers to fault tolerant quantum computation is well known in the quantum error correction field \cite{Raus07d,horsman2012latticesurgery,chamberland2022building,chamberland2022universal,chamberland2022circuit}.
+Moving logical observables requires multiplying many stabilizers together, and it's impossible to do any computation if you just leave everything in the same place forever.
+Therefore, being able to reliably compute huge products of stabilizers is extremely important.
+Given these facts, it's strange that there's no well established experiment for directly verifying the ability to compute large stabilizer products (analogous to how memory experiments are a well established benchmark for directly verifying the ability to preserve a qubit through time \cite{chen2021exponential,ryan2021realization,zhao2021realizing,krinner2021realizing,andersen2020repeated}).
 The goal of the experiment type proposed by this paper, ``stability experiments", is to fill this gap.
 
 At a high level, stability experiments are actually quite similar to memory experiments (see \fig{topological}).
@@ -185,7 +187,7 @@ A more abstract justification for being interested in the stability experiment i
 
 A final reason to be interested in the stability experiment is that, because its code distance depends on how long it runs instead of how many qubits it covers, it allows experimental access to arbitrarily high code distances.
 Additionally, as I'll show with simulation results, at small patch sizes the stability experiment is easier than memory experiments.
-A quantum computer with a noise level above the threshold of the surface code (meaning making surface code patches bigger increases the logical error rate rather than decreasing it) can still be below the threshold of small stability experiments (meaning that increasing the number of rounds decreases the logical error rate rather than increasing it).
+A quantum computer with a noise level above the threshold of the surface code (meaning making surface code patches bigger increases the logical error rate rather than decreasing it) can still be below the threshold of small fixed-patch-size stability experiments (meaning that increasing the number of rounds decreases the logical error rate rather than increasing it).
 This suggests that a quantum computer near (but not yet below) the threshold of the surface code may still be able to demonstrate strong exponential suppression of a relevant logical error mechanism; to demonstrate progress towards the ultimate goal of strong exponential suppression of \emph{all} logical error mechanisms at full scale.
 
 \section{The Stability Experiment}
@@ -201,38 +203,21 @@ So the product of all the X stabilizers must be $\prod_{q \in \text{data}} (X_q)
 Because we're considering a situation with noise, the stabilizer measurement results won't always satisfy this global stabilizer product invariant.
 If one of the X stabilizer measurements is flipped, the product of all the X stabilizer measurements will also be flipped.
 It will be $-1$ instead of $+1$.
-Somewhat surprisingly, performing error correction on the measurements doesn't always fix this.
-Error correction doesn't guarantee the global product will be $+1$.
+Counter-intuitively, performing local error correction doesn't ensure the global product is correct.
 
 The way errors are corrected in the surface code is by looking for ``detection events"; for stabilizer measurements not matching some local invariant.
 For example, a $Z^{\otimes 4}$ measurement returning $-1$ when the data qubits were just initialized into $|0\rangle$ is a detection event, because $|0\rangle^{\otimes 4}$ is in the $+1$ eigenbasis of $Z^{\otimes 4}$ not the $-1$ eigenbasis.
 Another example of a detection event is a stabilizer measurement returning a different result than it did in the previous round, since these measurements should be staying stable over time.
 If there are no detection events, the error correction system will assume no errors have occurred and make no corrections.
-To show that the stability experiment can experience a logical error, I'll give an example where there are no detection events but the global product of stabilizers is wrong.
+To show that the stability experiment can experience a logical error, it's sufficient to give an example where there are no detection events but the global product of stabilizers is wrong.
+Such an example is shown in \fig{logical_error}.
+The key feature is a chain of measurement errors stretching from the start of the experiment to the end of the experiment.
 
-Suppose you follow the procedure shown in \fig{4x4_X}, and that there is absolutely no noise in the system except that the measurement of the top center X stabilizer is always flipped.
-You start by initializing the data qubits in the Z basis and performing the first round of stabilizer measurements.
-The top center X stabilizer is not one of the stabilizers of the initial state of the data qubits so, when it's measured, it will randomly project the state into either the $+1$ or $-1$ eigenbasis of the stabilizer.
-Because the outcome of the projection is random, there is no initial expectation for what the top center X stabilizer measurement should be.
-So there will be no detection event produced in the first round, despite the measurement being flipped.
-In the second round, the top center X stabilizer measurement returns the same flipped result again.
-Because it's being \emph{consistently} flipped, there is again no detection event.
-Similarly, there will be no detection event in the third round, or the fourth, or any round before the last round.
-The last round could produce a detection event if the data qubits were measured in the X basis, because multiplying the four relevant data measurements together should agree with the measurement of the stabilizer.
-But the data qubits are being measured in the Z basis so there is no detection event in the last round either.
-
-To review: by consistently flipping the measurement result of one stabilizer, no detection events were produced during the stability experiment.
-When there are no detection events, the error correction system will assume no errors have occurred and apply no corrections.
-But consistently flipping a measurement result \emph{did} flip the combined product of all the relevant stabilizers.
-The product was wrong despite applying error correction.
-A logical error occurred.
-
-Note that the logical error I just described relied on the initialization and measurement of the data qubits happening in a basis opposite to the type of the spatial boundaries.
-This condition wasn't specific to the example.
-It's a requirement of the stability experiment.
-If either of the timelike boundaries (the data initialization or the data measurement) have the same type as the spatial boundaries, then it's no longer possible for there to be a logical error.
+Note that the logical error shown in \fig{logical_error} is detectable if the initialization and measurement of the data qubits is done in the same basis as the type of the spatial boundaries.
+For a logical error to exist, the time boundaries (the data initialization and the data measurement) must not be the same type as the spatial boundaries.
+This is a general requirement of the stability experiment.
 From a topological perspective, this is because all error chains are contractible if one of the timelike boundaries matches the spacelike boundaries.
-From a physical perspective, this is because it's literally impossible to pick per-qubit X-basis data measurement outcomes (no matter how noisy) that violate the global stabilizer product being checked.
+From a physical perspective, this is because it's impossible to pick per-qubit X-basis data measurement outcomes (no matter how noisy) that violate the global stabilizer product being checked.
 So the data measurements act as an inviolable source of truth that the stabilizer measurements are compared to, and corrected against, via the definitions of detection events.
 
 With all of that established, I can finally define the steps making up a stability experiment, with an understanding of why each step is the way it is:
@@ -252,7 +237,7 @@ The more times you repeat the stabilizer measurements, the more physical errors 
 \item Measure all data qubits in a basis that disagrees with the chosen boundary type (so that the measurements can't be used as a source of truth that forces the relevant stabilizers to be correct via the error correction process).
 
 \item Arbitrarily pick a round from the circuit's execution, and compute the product of all measurements from that round which correspond to stabilizers whose type matches the spatial boundaries.
-Use a decoder to predict, based on detection event data, if this product is flipped (i.e. perform error correction).
+Use a decoder to predict, based on the detection event data collected throughout the circuit's execution, if this product is flipped.
 If the decoder predicts incorrectly (e.g. it says the product was flipped but the product was $+1$ as it would be in the noiseless case), a logical error has occurred.
 
 \end{enumerate}
@@ -275,7 +260,7 @@ If the decoder predicts incorrectly (e.g. it says the product was flipped but th
     \label{fig:topological}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[ht!]
     \centering
     \resizebox{\linewidth}{!}{
         \includegraphics{assets/logical-error.png}
@@ -307,13 +292,15 @@ When I originally came across the idea of a stability experiment, the motivating
 Specifically, was there some way to make a high level error correction experiment that was more sensitive to measurement error than to data error (compared to a memory experiment).
 I figured that because logical errors in the stability experiment look like repeated measurement errors, and because measurement errors can't cause logical errors in memory experiments (except by creating confusion that hides the key data errors), the stability experiment would be more sensitive to measurement errors.
 
-Experience has taught me that these sorts of intuitions about how error correcting problems will behave aren't worth much unless backed by simulation.
-So I did a simulation of various memory experiments and stability experiments where I separately varied the amount of measurement noise and other noise.
+To test this idea, I did a simulation of various memory experiments and stability experiments where I separately varied the amount of measurement noise and other noise.
 In these experiments, syndrome decoding was done using correlated minimum weight perfect matching~\cite{fowler2013optimal}.
 I simulated memory experiments with a fixed number of rounds and did a line fit of log logical error rate vs diameter (the code distance for memory experiments).
 I used patch sizes 3x3, 5x5, and 7x7.
 I also simulated stability experiments with a fixed patch size and did a line fit of log logical error rate vs rounds (the code distance for stability experiments).
 I used 5, 15, and 25 rounds.
+(I used the common surface code circuit schedule for surface code memory experiments, where the X and Z stabilizers are measured using four layers of CZs and hook errors are oriented to maximize the code distance \cite{horsman2012latticesurgery}.
+I used the same schedule for the stability experiments, though the orientation of the hook errors should not matter there.)
+
 I plotted a heatmap of the slopes of these lines; a heat map of how much the logical error rate was improving as the code distance was increased (see \fig{stability_sim_mr}).
 This is a measure of how far (and whether) the physical noise rate is below the effective threshold of the experiment.
 
@@ -365,6 +352,18 @@ This plot even more strongly emphasizes the fact that the stability experiment, 
 In this paper I described "stability experiments", which create a degenerate system that has a global spacelike invariant and then verify the invariant.
 I argued that, although at first glance the stability experiment looks like it's not testing anything, it can directly measure relevant operational quantities, like how many times you need to repeat stabilizer measurements to hit a target logical error rate when moving a logical qubit.
 Furthermore, I presented simulated data showing that stability experiments provide experimental access to the high code distance regime, with a forgiving threshold, at small patch sizes.
+
+One of the underlying reasons that the stability experiment is ``easy" is that it is increasing only one dimension of the experiment: the one that increases the code distance.
+In actual quantum computations, increasing protection against all error mechanisms requires growing the size of the computation in all three dimensions (two space, one time).
+For example, consider moving a logical qubit.
+The stability experiment corresponds to protecting one of the observables being moved.
+To simultaneously increase the protection of the other observable, the surface code patch has to be widened.
+To travel longer distances, the patch has to be lengthened.
+Widening and lengthening the patch increases the number of stabilizers in the product, making the experiment harder, requiring lower physical error rates to achieve the same logical error rate.
+This just-one-direction feature makes the stability experiment somewhat analogous to a repetition code.
+Repetition codes also focus on just one error mechanism, and increase the dimension that increases protection against that error mechanism, while ignoring a second error mechanism that would be relevant in real world quantum computations.
+Despite this dissimilarity to practice, repetition codes and stability experiments are useful for their simplicity and their ability to act as early warning systems for problems.
+For example, in \cite{gqai2022suppressing}, a repetition code was used to detect a noise floor being caused by high energy events (such as cosmic rays).
 
 Although this paper has focused on doing the stability experiment in the surface code, the experiment generalizes to other error correcting codes.
 \fig{honeycomb_stability} shows a stability experiment in the honeycomb code.
